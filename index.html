@@ -43,27 +43,47 @@
 			var onShapesReady = function(){
 				
 				var currentEdit;
-				var layer = L.geoJson(shapes.toJSON(),{
-					onEachFeature: function(feature,layer){
-						layer.on("dblclick",function(e){
-							if(currentEdit){
-								currentEdit.editing.disable();
-							}
-							currentEdit = e.target;
-							e.target.editing.enable();
-						});
+
+				var attachEditEvent = function(layer) {
+					layer.on("click",function(e){
+						if(currentEdit){
+							currentEdit.editing.disable();
+						}
+						currentEdit = e.target;
+						e.target.editing.enable();
+					});
+				};
+
+				var attachDeleteEvent = function(layer) {
+					layer.on("dblclick",function(e){
+						if(currentEdit){
+							currentEdit.editing.disable();
+						}
+						var shape = layer.relatedObject;
+						shape.on("destroy", function() {
+							globalLayer.removeLayer(layer);
+						})
+						shape.destroy();
+					});
+				};
+
+				var globalLayer = L.geoJson(shapes.toJSON(),{
+					onEachFeature: function(feature, layer) {
+						layer.relatedObject = new Shape(feature);
+						attachEditEvent(layer);
+						attachDeleteEvent(layer);
 					}
 				});
 				
-				map.addLayer(layer);
-				map.fitBounds(layer.getBounds());
+				map.addLayer(globalLayer);
+				map.fitBounds(globalLayer.getBounds());
 
 				// Initialize the draw control and pass it the FeatureGroup of editable layers
 				var drawControl = new L.Control.Draw({
 					draw : {
 						circle: false,
 						edit: {
-							featureGroup: layer,
+							featureGroup: globalLayer,
 							edit: false
 						}
 					}
@@ -71,19 +91,14 @@
 				map.addControl(drawControl);
 				
 				map.on('draw:created', function (e) {	
-					layer.addLayer(e.layer);
-					var shape = new Shape();
+					globalLayer.addLayer(e.layer);
+					var shape = e.layer.relatedObject = new Shape();
 					shape.set("geometry",e.layer.toGeoJSON());
 					shapes.add(shape);
 					shape.save();
+					attachEditEvent(e.layer);
+					attachDeleteEvent(e.layer);
 				});
-				
-				map.on('draw:deleted', function (e) {	
-					layer.addLayer(e.layer);
-				});
-				
-				
-			
 			
 			};
 			
