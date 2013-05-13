@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+   <head>
+       <title>Node JS</title>
+       <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+	   <script src="jquery-1.9.1.js"></script>
+	   <script src="underscore.js"></script>
+	   <script src="backbone.js"></script>
+	   <script src="leaflet-src.js"></script>
+	   <script src="leaflet.draw-src.js"></script>
+	   <link rel="stylesheet" href="leaflet.css"></link>
+	   <link rel="stylesheet" href="leaflet.draw.css"></link>
+
+   </head>
+   <body>
+	
+	<div id="map" style="height:680px"></div>
+		   <script>
+			var map = L.map('map').setView([35.71084, -100.21729], 5);
+			
+			L.tileLayer('http://{s}.tile.cloudmade.com/d4fc77ea4a63471cab2423e66626cbb6/997/256/{z}/{x}/{y}.png', {
+				attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
+				maxZoom: 20
+			}).addTo(map);
+			
+			var Shape = Backbone.Model.extend({
+				idAttribute:"_id",
+				urlRoot:"/shapes",
+				parse : function(data){
+					data.type = "Feature";
+					return data;
+				}
+			});
+			
+			var ShapeCollection = Backbone.Collection.extend({
+				model:Shape,
+				url:"/shapes"
+			});
+			
+			var shapes = new ShapeCollection();
+			
+			
+			var onShapesReady = function(){
+				
+				var currentEdit;
+				var layer = L.geoJson(shapes.toJSON(),{
+					onEachFeature: function(feature,layer){
+						layer.on("dblclick",function(e){
+							if(currentEdit){
+								currentEdit.editing.disable();
+							}
+							currentEdit = e.target;
+							e.target.editing.enable();
+						});
+					}
+				});
+				
+				map.addLayer(layer);
+				map.fitBounds(layer.getBounds());
+
+				// Initialize the draw control and pass it the FeatureGroup of editable layers
+				var drawControl = new L.Control.Draw({
+					draw : {
+						circle: false,
+						edit: {
+							featureGroup: layer,
+							edit: false
+						}
+					}
+				});
+				map.addControl(drawControl);
+				
+				map.on('draw:created', function (e) {	
+					layer.addLayer(e.layer);
+					var shape = new Shape();
+					shape.set("geometry",e.layer.toGeoJSON());
+					shapes.add(shape);
+					shape.save();
+				});
+				
+				map.on('draw:deleted', function (e) {	
+					layer.addLayer(e.layer);
+				});
+				
+				
+			
+			
+			};
+			
+			shapes.fetch().done(onShapesReady);
+			
+			
+	   </script>
+   </body>
+   
+   </html>
