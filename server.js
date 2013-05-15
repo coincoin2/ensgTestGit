@@ -5,7 +5,7 @@ var mongoose = require("mongoose");
 // "Model"
 
 //mongoose.connect("mongodb://localhost/ensg-web-project");
-mongoose.connect("mongodb://test:test@dharme.mongohq.com:10070/test-ensg");
+mongoose.connect("mongodb://test:test@dharme.mongohq.com:10070/test-eng");
 
 var Schema = mongoose.Schema;
 
