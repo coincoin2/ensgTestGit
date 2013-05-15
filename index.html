@@ -47,17 +47,29 @@
 				var attachEditEvent = function(layer) {
 					layer.on("click",function(e){
 						if(currentEdit){
-							currentEdit.editing.disable();
+							if(currentEdit.editing){
+								currentEdit.editing.disable();
+							}
 						}
 						currentEdit = e.target;
-						e.target.editing.enable();
+						if(currentEdit.editing){
+							e.target.editing.enable();
+						}
+						
+						
+					});
+					
+					layer.on("edit", function(e){
+						e.target.relatedObject.set("geometry",e.target.toGeoJSON());
 					});
 				};
 
 				var attachDeleteEvent = function(layer) {
 					layer.on("dblclick",function(e){
 						if(currentEdit){
-							currentEdit.editing.disable();
+							if(currentEdit.editing){
+								currentEdit.editing.disable();
+							}
 						}
 						var shape = layer.relatedObject;
 						shape.on("destroy", function() {
@@ -69,14 +81,16 @@
 
 				var globalLayer = L.geoJson(shapes.toJSON(),{
 					onEachFeature: function(feature, layer) {
-						layer.relatedObject = new Shape(feature);
+						layer.relatedObject = shapes.get(feature._id);
 						attachEditEvent(layer);
 						attachDeleteEvent(layer);
 					}
 				});
 				
 				map.addLayer(globalLayer);
-				map.fitBounds(globalLayer.getBounds());
+				if (Shape.length>0){
+					map.fitBounds(globalLayer.getBounds());
+					}
 
 				// Initialize the draw control and pass it the FeatureGroup of editable layers
 				var drawControl = new L.Control.Draw({
@@ -98,6 +112,18 @@
 					shape.save();
 					attachEditEvent(e.layer);
 					attachDeleteEvent(e.layer);
+				});
+				
+				map.on('click', function(e) {
+				
+					if (currentEdit){
+                        currentEdit.editing.disable();
+                        shapes.each(function(shape){
+							if(shape.hasChanged()){
+                                shape.save();
+                            }
+                        });        
+                    }
 				});
 			
 			};
